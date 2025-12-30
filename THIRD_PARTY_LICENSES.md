@@ -1,7 +1,8 @@
 # Third-Party Licenses
 このプロジェクトでは、以下のサードパーティライブラリを利用しています。
 ---
-## UIA.ahk
+## UIA-v2
+Lib\UIA.ahk
 - **Author**: Descolada
 - **License**: MIT License
 - **Source**: https://github.com/Descolada/UIA-v2

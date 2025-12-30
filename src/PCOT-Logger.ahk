@@ -2,6 +2,9 @@
 #Include Lib\UIA.ahk
 
 Main() {
+	SEPARATOR_LIST := ","
+	SEPARATOR_PAIR := ":"
+	
 	SplitPath(A_ScriptName, , , , &scriptName)
 	PATH_INI_FILE := scriptName . ".ini"
 	INI_SECTION_COMMON := "Common"
@@ -26,21 +29,34 @@ Main() {
 
 	sourceElementPath := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "SourcePath")
 	resultElementPath := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "ResultPath")
-
+	etcElementPaths := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "EtcPaths")
+	
+	etcElementPathMap := Map()
+	for (, item in StrSplit(etcElementPaths, SEPARATOR_LIST)) {
+		pair := StrSplit(item, SEPARATOR_PAIR)
+		if (pair.Length >= 2) {
+			tempKey := pair[1]
+			tempValue := pair[2]
+			if (StrLen(tempKey) > 0 && StrLen(tempValue) > 0) {
+				etcElementPathMap[tempKey] := tempValue
+			}
+		}
+	}
+	
 	targetWindowHwnd := WinWait(targetWindowTitle, targetWindowText, targetWindowCheckTimeout)
 	if (!targetWindowHwnd) {
 		MsgBox("Window is not found.")
 		ExitApp
 	}
 	targetWindow := UIA.ElementFromHandle(targetWindowHwnd)
-
+	
 	sourceElement := targetWindow.ElementFromPathExist(sourceElementPath)
 	resultElement := targetWindow.ElementFromPathExist(resultElementPath)
 	if (!sourceElement || !resultElement) {
 		MsgBox("Element is not found.")
 		ExitApp
 	}
-
+	
 	lastResultText := resultElement.Value
 	Loop {
 		if (!WinExist(targetWindowTitle, targetWindowText)) {
@@ -50,28 +66,44 @@ Main() {
 		sourceElement := targetWindow.ElementFromPathExist(sourceElementPath)
 		resultElement := targetWindow.ElementFromPathExist(resultElementPath)
 		if (sourceElement && resultElement) {
-			currentResultText := resultElement.Value
+			currentResultText := GetText(resultElement)
 			if (IsValidText(invalidResultText, currentResultText) && currentResultText != lastResultText) {
-				sourceText := sourceElement.Value
 				lastResultText := currentResultText
+				sourceText := GetText(sourceElement)
 				
 				timestamp := FormatTime(, logTimestampFormat)
 				sessionId := FormatTime(, logSessionIdFormat)
 				
-				logMetaInfoStr := ((StrLen(logMetaInfo) > 0) ? ("`"info`": " . FormatJsonString(logMetaInfo) . ",") : "")
+				etcStr := ""
+				For (tempKey, tempValue in etcElementPathMap) {
+					tempElement := targetWindow.ElementFromPathExist(tempValue)
+					if (tempElement) {
+						tempText := GetText(tempElement)
+						if (StrLen(etcStr) > 0) {
+							etcStr .= ", "
+						}
+						etcStr .= "`"" . tempKey . "`": " . FormatJsonString(tempText)
+					}
+				}
+				if (StrLen(etcStr) > 0) {
+					etcStr := ", `"etc`": {" . etcStr . "}"
+				}
+				
+				logMetaInfoStr := ((StrLen(logMetaInfo) > 0) ? (", `"info`": " . FormatJsonString(logMetaInfo)) : "")
 				
 				json :=
 					"{"
-						. "`"timestamp`": " . FormatJsonString(timestamp) . ","
-						. "`"text`": {"
-							. "`"source`": " . FormatJsonString(sourceText) . ","
-							. "`"result`": " . FormatJsonString(currentResultText) . ","
-							. "`"source_length`": " . StrLen(sourceText) . ","
-							. "`"result_length`": " . StrLen(currentResultText)
-						. "},"
-						. "`"meta`": {"
-							. "`"version`": " . FormatJsonString(logVersion) . ","
-							. "`"session_id`": " . FormatJsonString(sessionId)
+						.   "`"timestamp`": " . FormatJsonString(timestamp)
+						. ", `"text`": {"
+							.   "`"source`": " . FormatJsonString(sourceText)
+							. ", `"result`": " . FormatJsonString(currentResultText)
+							. ", `"source_length`": " . StrLen(sourceText)
+							. ", `"result_length`": " . StrLen(currentResultText)
+						. "}"
+						. etcStr
+						. ", `"meta`": {"
+							.   "`"version`": " . FormatJsonString(logVersion)
+							. ", `"session_id`": " . FormatJsonString(sessionId)
 							. logMetaInfoStr
 						. "}"
 					. "}"
@@ -86,6 +118,20 @@ Main() {
 		
 		Sleep(checkInterval)
 	}
+}
+
+GetText(element) {
+	try {
+		hasValuePattern := element.GetPattern(UIA.Pattern.Value)
+	} catch {
+		hasValuePattern := false
+	}
+	if (hasValuePattern) {
+		str := element.Value
+	} else {
+		str := element.Name
+	}
+	return str
 }
 
 EscapeString(str) {
