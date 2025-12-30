@@ -1,9 +1,6 @@
 # Third-Party Licenses
 このプロジェクトでは、以下のサードパーティライブラリを利用しています。
-各ライブラリの著作権表示およびライセンスは、ライブラリ配布元の記述をそのまま保持しています。
-
 ---
-
 ## UIA.ahk
 - **Author**: Descolada
 - **License**: MIT License
