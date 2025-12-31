@@ -8,7 +8,7 @@ PCOTを起動した後にこのロガーを実行すると同じフォルダに�
 
 ## .iniファイルの分かりにくい項目について
 ### Common -> InvalidEscapedResultTexts  
-InvalidEscapedResultTexts=["翻訳中・・・\r", "蒟蒻\r"]  
+InvalidEscapedResultTexts=["翻訳中・・・\r", "応答の状態コードは成功を示していません: 429 (Too Many Requests)。\r"]  
 の様にカンマ区切りの文字列配列形式で指定する。  
 この指定した文字列と完全一致するものが結果に表示されてもログに書き込まなくなる。  
 ただし指定する文字列において以下の文字はエスケープする必要がある。
