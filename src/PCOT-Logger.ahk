@@ -2,7 +2,12 @@
 #Include Lib\UIA.ahk
 
 Main() {
-	SEPARATOR_LIST := ","
+	MSG_LOGGING_STARTED := "Logging started."
+	MSG_LOGGING_STOPPED := "Logging stopped."
+	
+	ERROR_MSG_WINDOW_IS_NOT_FOUND := "Window is not found."
+	ERROR_MSG_ELEMENT_IS_NOT_FOUND := "Element is not found."
+	
 	SEPARATOR_PAIR := ":"
 	
 	SplitPath(A_ScriptName, , , , &scriptName)
@@ -13,7 +18,7 @@ Main() {
 	INI_SECTION_TARGET_ELEMENT := "TargetElement"
 
 	checkInterval := Integer(IniRead(PATH_INI_FILE, INI_SECTION_COMMON, "CheckInterval"))
-	invalidResultText := IniRead(PATH_INI_FILE, INI_SECTION_COMMON, "InvalidResultText")
+	invalidEscapedResultTexts := ParseArrayString(IniRead(PATH_INI_FILE, INI_SECTION_COMMON, "InvalidEscapedResultTexts"))
 
 	logDirectoryPath := IniRead(PATH_INI_FILE, INI_SECTION_LOG, "DirectoryPath")
 	logFilenamePrefix := IniRead(PATH_INI_FILE, INI_SECTION_LOG, "FilenamePrefix")
@@ -22,18 +27,18 @@ Main() {
 	logMetaInfo := IniRead(PATH_INI_FILE, INI_SECTION_LOG, "MetaInfo", "")
 	logTimestampFormat := IniRead(PATH_INI_FILE, INI_SECTION_LOG, "TimestampFormat", "")
 	logSessionIdFormat := IniRead(PATH_INI_FILE, INI_SECTION_LOG, "SessionIdFormat", "")
-
+	
 	targetWindowTitle := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_WINDOW, "WindowTitle")
 	targetWindowText := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_WINDOW, "WindowText")
 	targetWindowCheckTimeout := Integer(IniRead(PATH_INI_FILE, INI_SECTION_TARGET_WINDOW, "CheckTimeout"))
-
+	
 	sourceElementPath := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "SourcePath")
 	resultElementPath := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "ResultPath")
-	etcElementPaths := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "EtcPaths")
+	etcElementPaths := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "EtcPaths", "[]")
 	
 	etcElementPathMap := Map()
-	for (, item in StrSplit(etcElementPaths, SEPARATOR_LIST)) {
-		pair := StrSplit(item, SEPARATOR_PAIR)
+	for (pairStr in ParseArrayString(etcElementPaths)) {
+		pair := StrSplit(pairStr, SEPARATOR_PAIR)
 		if (pair.Length >= 2) {
 			tempKey := pair[1]
 			tempValue := pair[2]
@@ -45,7 +50,7 @@ Main() {
 	
 	targetWindowHwnd := WinWait(targetWindowTitle, targetWindowText, targetWindowCheckTimeout)
 	if (!targetWindowHwnd) {
-		MsgBox("Window is not found.")
+		MsgBox(ERROR_MSG_WINDOW_IS_NOT_FOUND . "`n" . MSG_LOGGING_STOPPED)
 		ExitApp
 	}
 	targetWindow := UIA.ElementFromHandle(targetWindowHwnd)
@@ -53,13 +58,15 @@ Main() {
 	sourceElement := targetWindow.ElementFromPathExist(sourceElementPath)
 	resultElement := targetWindow.ElementFromPathExist(resultElementPath)
 	if (!sourceElement || !resultElement) {
-		MsgBox("Element is not found.")
+		MsgBox(ERROR_MSG_ELEMENT_IS_NOT_FOUND . "`n" . MSG_LOGGING_STOPPED)
 		ExitApp
 	}
 	
 	lastResultText := resultElement.Value
+	MsgBox(MSG_LOGGING_STARTED)
 	Loop {
 		if (!WinExist(targetWindowTitle, targetWindowText)) {
+			MsgBox(ERROR_MSG_WINDOW_IS_NOT_FOUND . "`n" . MSG_LOGGING_STOPPED)
 			ExitApp
 		}
 		
@@ -67,7 +74,7 @@ Main() {
 		resultElement := targetWindow.ElementFromPathExist(resultElementPath)
 		if (sourceElement && resultElement) {
 			currentResultText := GetText(resultElement)
-			if (IsValidText(invalidResultText, currentResultText) && currentResultText != lastResultText) {
+			if (IsValidText(invalidEscapedResultTexts, currentResultText) && currentResultText != lastResultText) {
 				lastResultText := currentResultText
 				sourceText := GetText(sourceElement)
 				
@@ -124,7 +131,7 @@ GetText(element) {
 	try {
 		hasValuePattern := element.GetPattern(UIA.Pattern.Value)
 	} catch {
-		hasValuePattern := false
+		hasValuePattern := False
 	}
 	if (hasValuePattern) {
 		str := element.Value
@@ -132,6 +139,26 @@ GetText(element) {
 		str := element.Name
 	}
 	return str
+}
+
+ParseArrayString(str) {
+	resultArray := []
+	
+	if (!(RegExMatch(str, "^\s*\[(.*)\]\s*$", &m))) {
+		return []
+	}
+	
+	innerStr := m[1]
+	
+	if (StrLen(innerStr) > 0) {
+		pos := 1
+		while (RegExMatch(innerStr, '(?<!\\)"(.*?)(?<!\\)"', &m, pos)) {
+			resultArray.Push(m[1])
+			pos := m.Pos + m.Len
+		}
+	}
+	
+	return resultArray
 }
 
 EscapeString(str) {
@@ -142,8 +169,20 @@ EscapeString(str) {
 	return str
 }
 
-IsValidText(invalidText, text) {
-	return (text != "" && EscapeString(text) != invalidText)
+IsValidText(invalidEscapedTexts, text) {
+	result := True
+	if (text != "") {
+		escapedText := EscapeString(text)
+		for (invalidEscapedText in invalidEscapedTexts) {
+			if (escapedText == invalidEscapedText) {
+				result :=  False
+				break
+			}
+		}
+	} else {
+		result := False
+	}
+	return result
 }
 
 FormatJsonString(str) {

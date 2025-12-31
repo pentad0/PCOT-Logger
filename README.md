@@ -7,14 +7,24 @@ PCOTを起動した後にこのロガーを実行すると同じフォルダに�
 その状態でPCOTで翻訳するとロガーを置いてあるパスにLogsフォルダを作成し、その中にJSONL形式でログファイルを作成する。
 
 ## .iniファイルの分かりにくい項目について
++ Common -> InvalidEscapedResultTexts  
+InvalidEscapedResultTexts=["翻訳中・・・\r", "蒟蒻\r"]  
+の様にカンマ区切りの文字列配列形式で指定する。  
+この指定した文字列と完全一致するものが結果に表示されてもログに書き込まなくなる。  
+ただし指定する文字列において以下の文字はエスケープする必要がある。
+"\" -> "\\"
+"`"" -> "\`""
+"`n" -> "\n"
+"`r" -> "\r"
+
 + Log -> MetaInfo  
 指定した文字列がJSONの"meta -> info"に書き込まれる。  
 何かログに埋め込んでおきたい情報があるときに使う。
 
 + TargetElement -> EtcPaths  
-"process:HK,result_language:Yq3K,translation_engine:HKs"  
-の様に"キー:エレメントのパス"をカンマ区切りで指定する。  
-このパスはPCOTのウィンドウ上のエレメントのパスで指定したパスのエレメントに表示されている文字列がJSONの"etc -> キー"に書き込まれる。  
+EtcPaths=["process:HK", "result_language:Yq3K", "translation_engine:HKs"]  
+の様に"キー:エレメントのパス"をカンマ区切りの文字列配列形式で指定する。  
+このパスはPCOTのウィンドウ上のエレメントのパスで、指定したパスのエレメントに表示されている文字列がJSONの"etc -> キー"に書き込まれる。  
 エレメントのパスはUIA-v2のリリースパッケージに同梱されている"UIATreeInspector.ahk"で調べられる。  
 JSONに書き込まれる順番は記入順だがキーが重複した場合、順番は最初にキーが出現した位置でパスは最後の物が使われる。
 
