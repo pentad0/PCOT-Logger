@@ -30,7 +30,6 @@ Main() {
 	
 	targetWindowTitle := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_WINDOW, "WindowTitle")
 	targetWindowText := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_WINDOW, "WindowText")
-	targetWindowCheckTimeout := Integer(IniRead(PATH_INI_FILE, INI_SECTION_TARGET_WINDOW, "CheckTimeout"))
 	
 	sourceElementPath := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "SourcePath")
 	resultElementPath := IniRead(PATH_INI_FILE, INI_SECTION_TARGET_ELEMENT, "ResultPath")
@@ -48,7 +47,7 @@ Main() {
 		}
 	}
 	
-	targetWindowHwnd := WinWait(targetWindowTitle, targetWindowText, targetWindowCheckTimeout)
+	targetWindowHwnd := WinExist(targetWindowTitle, targetWindowText)
 	if (!targetWindowHwnd) {
 		MsgBox(ERROR_MSG_WINDOW_IS_NOT_FOUND . "`n" . MSG_LOGGING_STOPPED)
 		ExitApp
